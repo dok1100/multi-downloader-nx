@@ -1322,14 +1322,7 @@ export default class Crunchy implements ServiceClass {
 
           if (chapters.length > 0) {
             chapters.sort((a, b) => a.start - b.start);
-            //Check if chapters has an intro
-            if (!(chapters.find(c => c.type === 'intro') || chapters.find(c => c.type === 'recap'))) {
-              compiledChapters.push(
-                `CHAPTER${(compiledChapters.length/2)+1}=00:00:00.00`,
-                `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
-              );
-            }
-
+            
             //Loop through all the chapters
             for (const chapter of chapters) {
               if (typeof chapter.start == 'undefined' || typeof chapter.end == 'undefined') continue;
@@ -1339,32 +1332,106 @@ export default class Crunchy implements ServiceClass {
               endTime.setSeconds(chapter.end);
               const startFormatted = startTime.toISOString().substring(11, 19)+'.00';
               const endFormatted = endTime.toISOString().substring(11, 19)+'.00';
+              ////Find the largest start time
+              const maxStart = chapters;
+              const largestStart = Math.max(...maxStart.map(obj => obj.start));
+              ////We need the duration of the ep
+              const epInfo = await this.req.getData(`${api.cms}/objects/${currentMediaId}?force_locale=&preferred_audio_language=ja-JP&locale=${this.locale}`, AuthHeaders);
+                if(!epInfo.ok || !epInfo.res){
+                  console.error('EP duration info Request FAILED! Chapters will not work properly!!!');
+                  return;
+                }
+              const epMeta = await epInfo.res.json();
+              const durationMs = epMeta.data[0].episode_metadata.duration_ms;
+              const durationSeconds = Math.floor(durationMs / 1000 - 3);
             
               //Push generated chapters
+              ////Check if chapters has no intro and no recap
+              if (!(chapters.find(c => c.type === 'intro') || chapters.find(c => c.type === 'recap'))) {
+                if (chapter.type == 'credits') {
+                  if (chapter.start > 0) {
+                  compiledChapters.push(
+                    `CHAPTER${(compiledChapters.length/2)+1}=00:00:00.00`,
+                    `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
+                   );
+                  }
+                compiledChapters.push(
+                  `CHAPTER${(compiledChapters.length/2)+1}=${startFormatted}`,
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)}`
+                 );
+                  if (chapter.end < durationSeconds && chapter.end != largestStart) {
+                  compiledChapters.push(
+                  `CHAPTER${(compiledChapters.length/2)+1}=${endFormatted}`,
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
+                  );
+                  }
+                }
+              }
+                    
+              ////Check if chapters has an intro and no recap
+              if ((chapters.find(c => c.type === 'intro')) && !(chapters.find(c => c.type === 'recap'))) {
               if (chapter.type == 'intro') {
                 if (chapter.start > 0) {
                   compiledChapters.push(
                     `CHAPTER${(compiledChapters.length/2)+1}=00:00:00.00`,
-                    `CHAPTER${(compiledChapters.length/2)+1}NAME=Prologue`
+                    `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
                   );
                 }
                 compiledChapters.push(
                   `CHAPTER${(compiledChapters.length/2)+1}=${startFormatted}`,
-                  `CHAPTER${(compiledChapters.length/2)+1}NAME=Opening`
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)}`
                 );
+                if (chapter.end < durationSeconds && chapter.end != largestStart) {
                 compiledChapters.push(
                   `CHAPTER${(compiledChapters.length/2)+1}=${endFormatted}`,
                   `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
                 );
+                }
               } else {
                 compiledChapters.push(
                   `CHAPTER${(compiledChapters.length/2)+1}=${startFormatted}`,
-                  `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)} Start`
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)}`
                 );
+                if (chapter.end < durationSeconds && chapter.end != largestStart) {
                 compiledChapters.push(
                   `CHAPTER${(compiledChapters.length/2)+1}=${endFormatted}`,
-                  `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)} End`
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
                 );
+                }
+              }
+              }
+
+              ////Check if chapters has an intro and recap - recap is usually before intro - like GK9U3EN08
+              if (chapters.find(c => c.type === 'intro') && chapters.find(c => c.type === 'recap')) {
+              if (chapter.type == 'recap') {
+                if (chapter.start > 0) {
+                  compiledChapters.push(
+                    `CHAPTER${(compiledChapters.length/2)+1}=00:00:00.00`,
+                    `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
+                  );
+                }
+                compiledChapters.push(
+                  `CHAPTER${(compiledChapters.length/2)+1}=${startFormatted}`,
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)}`
+                );
+                if (chapter.end < durationSeconds && chapter.end != largestStart) {
+                compiledChapters.push(
+                  `CHAPTER${(compiledChapters.length/2)+1}=${endFormatted}`,
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
+                );
+                }
+              } else {
+                compiledChapters.push(
+                  `CHAPTER${(compiledChapters.length/2)+1}=${startFormatted}`,
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)}`
+                );
+                if (chapter.end < durationSeconds && chapter.end != largestStart) {
+                compiledChapters.push(
+                  `CHAPTER${(compiledChapters.length/2)+1}=${endFormatted}`,
+                  `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
+                );
+                }
+              }
               }
             }
           }
