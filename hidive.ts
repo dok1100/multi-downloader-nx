@@ -656,7 +656,13 @@ export default class Hidive implements ServiceClass {
     const subsMargin = 0;
     const chosenFontSize = options.originalFontSize ? undefined : options.fontSize;
     let encryptionKeys: KeyContainer[] = [];
-    if (!canDecrypt) console.warn('Decryption not enabled!');
+    if (!canDecrypt) {
+      console.warn('Decryption not enabled, no CDM detected!');
+    }
+
+    if (!(this.cfg.bin.mp4decrypt || this.cfg.bin.shaka)) {
+      console.warn('No decryptor found, decryption not possible!');
+    }
 
     if (!this.cfg.bin.ffmpeg) 
       this.cfg.bin = await yamlCfg.loadBinCfg();
@@ -824,11 +830,16 @@ export default class Hidive implements ServiceClass {
             return undefined;
           }
           if (this.cfg.bin.mp4decrypt) {
-            const commandBase = `--show-progress --key ${encryptionKeys[cdm === 'playready' ? 0 : 1].kid}:${encryptionKeys[cdm === 'playready' ? 0 : 1].key} `;
-            const commandVideo = commandBase+`"${tempTsFile}.video.enc.m4s" "${tempTsFile}.video.m4s"`;
+            let commandBase = `--show-progress --key ${encryptionKeys[cdm === 'playready' ? 0 : 1].kid}:${encryptionKeys[cdm === 'playready' ? 0 : 1].key} `;
+            let commandVideo = commandBase+`"${tempTsFile}.video.enc.m4s" "${tempTsFile}.video.m4s"`;
 
-            console.info('Started decrypting video');
-            const decryptVideo = exec('mp4decrypt', `"${this.cfg.bin.mp4decrypt}"`, commandVideo);
+            if (this.cfg.bin.shaka) {
+              commandBase = ` --enable_raw_key_decryption ${encryptionKeys.map(kb => '--keys key_id='+kb.kid+':key='+kb.key).join(' ')}`;
+              commandVideo = `input="${tempTsFile}.video.enc.m4s",stream=video,output="${tempTsFile}.video.m4s"`+commandBase;
+            }
+
+            console.info('Started decrypting video,', this.cfg.bin.shaka ? 'using shaka' : 'using mp4decrypt');
+            const decryptVideo = exec(this.cfg.bin.shaka ? 'shaka-packager' : 'mp4decrypt', this.cfg.bin.shaka ? `"${this.cfg.bin.shaka}"` : `"${this.cfg.bin.mp4decrypt}"`, commandVideo);
             if (!decryptVideo.isOk) {
               console.error(decryptVideo.err);
               console.error(`Decryption failed with exit code ${decryptVideo.err.code}`);
@@ -848,7 +859,7 @@ export default class Hidive implements ServiceClass {
               });
             }
           } else {
-            console.warn('mp4decrypt not found, files need decryption. Decryption Keys:', encryptionKeys);
+            console.warn('mp4decrypt/shaka not found, files need decryption. Decryption Keys:', encryptionKeys);
           }
         }
       }
