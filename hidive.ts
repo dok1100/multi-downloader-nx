@@ -794,12 +794,10 @@ export default class Hidive implements ServiceClass {
       const tsFile = path.isAbsolute(fileName) ? fileName : path.join(this.cfg.dir.content, fileName);
       const tempFile = parseFileName(`temp-${selectedEpisode.id}`, variables, options.numbers, options.override).join(path.sep);
       const tempTsFile = path.isAbsolute(tempFile as string) ? tempFile : path.join(this.cfg.dir.content, tempFile);
-      const split = fileName.split(path.sep).slice(0, -1);
-      split.forEach((val, ind, arr) => {
-        const isAbsolut = path.isAbsolute(fileName);
-        if (!fs.existsSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val)))
-          fs.mkdirSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val));
-      });
+      const dirName = path.dirname(tsFile);
+      if (!fs.existsSync(dirName)) {
+        fs.mkdirSync(dirName, { recursive: true });
+      }
       const videoJson: M3U8Json = {
         segments: chosenVideoSegments.segments
       };
@@ -852,7 +850,8 @@ export default class Hidive implements ServiceClass {
               if (!options.nocleanup) {
                 fs.removeSync(`${tempTsFile}.video.enc.m4s`);
               }
-              fs.renameSync(`${tempTsFile}.video.m4s`, `${tsFile}.video.m4s`);
+              fs.copyFileSync(`${tempTsFile}.video.m4s`, `${tsFile}.video.m4s`);
+              fs.unlinkSync(`${tempTsFile}.video.m4s`);
               files.push({
                 type: 'Video',
                 path: `${tsFile}.video.m4s`,
@@ -881,12 +880,10 @@ export default class Hidive implements ServiceClass {
         const tempTsFile = path.isAbsolute(tempFile as string) ? tempFile : path.join(this.cfg.dir.content, tempFile);
         const outFile = parseFileName(options.fileName + '.' + (chosenAudioSegments.language.name), variables, options.numbers, options.override).join(path.sep);
         const tsFile = path.isAbsolute(outFile as string) ? outFile : path.join(this.cfg.dir.content, outFile);
-        const split = outFile.split(path.sep).slice(0, -1);
-        split.forEach((val, ind, arr) => {
-          const isAbsolut = path.isAbsolute(outFile as string);
-          if (!fs.existsSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val)))
-            fs.mkdirSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val));
-        });
+        const dirName = path.dirname(tsFile);
+        if (!fs.existsSync(dirName)) {
+          fs.mkdirSync(dirName, { recursive: true });
+        }
         const audioJson: M3U8Json = {
           segments: chosenAudioSegments.segments
         };
@@ -938,7 +935,8 @@ export default class Hidive implements ServiceClass {
               if (!options.nocleanup) {
                 fs.removeSync(`${tempTsFile}.audio.enc.m4s`);
               }
-              fs.renameSync(`${tempTsFile}.audio.m4s`, `${tsFile}.audio.m4s`);
+              fs.copyFileSync(`${tempTsFile}.audio.m4s`, `${tsFile}.audio.m4s`);
+              fs.unlinkSync(`${tempTsFile}.audio.m4s`);
               files.push({
                 type: 'Audio',
                 path: `${tsFile}.audio.m4s`,
@@ -976,7 +974,15 @@ export default class Hidive implements ServiceClass {
           }
           const sxData: Partial<sxItem> = {};
           sxData.file = langsData.subsFile(fileName as string, subIndex+'', subLang, false, options.ccTag);
-          sxData.path = path.join(this.cfg.dir.content, sxData.file);
+          if (path.isAbsolute(sxData.file)) {
+            sxData.path = sxData.file;
+          } else {
+            sxData.path = path.join(this.cfg.dir.content, sxData.file);
+          }
+          const dirName = path.dirname(sxData.path);
+          if (!fs.existsSync(dirName)) {
+            fs.mkdirSync(dirName, { recursive: true });
+          }
           sxData.language = subLang;
           if(options.dlsubs.includes('all') || options.dlsubs.includes(subLang.locale)) {
             const getVttContent = await this.req.getData(sub.url);

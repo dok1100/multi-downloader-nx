@@ -1741,12 +1741,10 @@ export default class Crunchy implements ServiceClass {
               const mathMsg    = `(${mathParts}*${options.partsize})`;
               console.info('Total parts in video stream:', totalParts, mathMsg);
               tsFile = path.isAbsolute(outFile as string) ? outFile : path.join(this.cfg.dir.content, outFile);
-              const split = outFile.split(path.sep).slice(0, -1);
-              split.forEach((val, ind, arr) => {
-                const isAbsolut = path.isAbsolute(outFile as string);
-                if (!fs.existsSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val)))
-                  fs.mkdirSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val));
-              });
+              const dirName = path.dirname(tsFile);
+              if (!fs.existsSync(dirName)) {
+                fs.mkdirSync(dirName, { recursive: true });
+              }
               const videoJson: M3U8Json = {
                 segments: chosenVideoSegments.segments
               };
@@ -1783,12 +1781,10 @@ export default class Crunchy implements ServiceClass {
               const mathMsg    = `(${mathParts}*${options.partsize})`;
               console.info('Total parts in audio stream:', totalParts, mathMsg);
               tsFile = path.isAbsolute(outFile as string) ? outFile : path.join(this.cfg.dir.content, outFile);
-              const split = outFile.split(path.sep).slice(0, -1);
-              split.forEach((val, ind, arr) => {
-                const isAbsolut = path.isAbsolute(outFile as string);
-                if (!fs.existsSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val)))
-                  fs.mkdirSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val));
-              });
+              const dirName = path.dirname(tsFile);
+              if (!fs.existsSync(dirName)) {
+                fs.mkdirSync(dirName, { recursive: true });
+              }
               const audioJson: M3U8Json = {
                 segments: chosenAudioSegments.segments
               };
@@ -1893,7 +1889,8 @@ export default class Crunchy implements ServiceClass {
                     if (!options.nocleanup) {
                       fs.removeSync(`${tempTsFile}.video.enc.m4s`);
                     }
-                    fs.renameSync(`${tempTsFile}.video.m4s`, `${tsFile}.video.m4s`);
+                    fs.copyFileSync(`${tempTsFile}.video.m4s`, `${tsFile}.video.m4s`);
+                    fs.unlinkSync(`${tempTsFile}.video.m4s`);
                     files.push({
                       type: 'Video',
                       path: `${tsFile}.video.m4s`,
@@ -1915,7 +1912,8 @@ export default class Crunchy implements ServiceClass {
                     if (!options.nocleanup) {
                       fs.removeSync(`${tempTsFile}.audio.enc.m4s`);
                     }
-                    fs.renameSync(`${tempTsFile}.audio.m4s`, `${tsFile}.audio.m4s`);
+                    fs.copyFileSync(`${tempTsFile}.audio.m4s`, `${tsFile}.audio.m4s`);
+                    fs.unlinkSync(`${tempTsFile}.audio.m4s`);
                     files.push({
                       type: 'Audio',
                       path: `${tsFile}.audio.m4s`,
@@ -2071,12 +2069,10 @@ export default class Crunchy implements ServiceClass {
                 const mathMsg    = `(${mathParts}*${options.partsize})`;
                 console.info('Total parts in stream:', totalParts, mathMsg);
                 tsFile = path.isAbsolute(outFile as string) ? outFile : path.join(this.cfg.dir.content, outFile);
-                const split = outFile.split(path.sep).slice(0, -1);
-                split.forEach((val, ind, arr) => {
-                  const isAbsolut = path.isAbsolute(outFile as string);
-                  if (!fs.existsSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val)))
-                    fs.mkdirSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val));
-                });
+                const dirName = path.dirname(tsFile);
+                if (!fs.existsSync(dirName)) {
+                  fs.mkdirSync(dirName, { recursive: true });
+                }
                 const dlStreamByPl = await new streamdl({
                   output: `${tsFile}.ts`,
                   timeout: options.timeout,
@@ -2125,12 +2121,10 @@ export default class Crunchy implements ServiceClass {
           fileName = parseFileName(options.fileName, variables, options.numbers, options.override).join(path.sep);
           const outFile = parseFileName(options.fileName + '.' + mMeta.lang?.name, variables, options.numbers, options.override).join(path.sep);
           tsFile = path.isAbsolute(outFile as string) ? outFile : path.join(this.cfg.dir.content, outFile);
-          const split = outFile.split(path.sep).slice(0, -1);
-          split.forEach((val, ind, arr) => {
-            const isAbsolut = path.isAbsolute(outFile as string);
-            if (!fs.existsSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val)))
-              fs.mkdirSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val));
-          });
+          const dirName = path.dirname(tsFile);
+          if (!fs.existsSync(dirName)) {
+            fs.mkdirSync(dirName, { recursive: true });
+          }
           const lang = langsData.languages.find(a => a.code === curStream?.audio_lang);
           if (!lang) {
             console.error(`Unable to find language for code ${curStream.audio_lang}`);
@@ -2193,13 +2187,15 @@ export default class Crunchy implements ServiceClass {
             const isSigns = langItem.code === audDub && !subsItem.isCC;
             const isCC = subsItem.isCC;
             sxData.file = langsData.subsFile(fileName as string, subsIndex, langItem, isCC, options.ccTag, isSigns, subsItem.format);
-            sxData.path = path.join(this.cfg.dir.content, sxData.file);
-            const split = sxData.path.split(path.sep).slice(0, -1);
-            split.forEach((val, ind, arr) => {
-              const isAbsolut = path.isAbsolute(sxData.path as string);
-              if (!fs.existsSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val)))
-                fs.mkdirSync(path.join(isAbsolut ? '' : this.cfg.dir.content, ...arr.slice(0, ind), val));
-            });
+            if (path.isAbsolute(sxData.file)) {
+              sxData.path = sxData.file;
+            } else {
+              sxData.path = path.join(this.cfg.dir.content, sxData.file);
+            }
+            const dirName = path.dirname(sxData.path);
+            if (!fs.existsSync(dirName)) {
+              fs.mkdirSync(dirName, { recursive: true });
+            }
             if (files.some(a => a.type === 'Subtitle' && (a.language.cr_locale == langItem.cr_locale || a.language.locale == langItem.locale) && a.cc === isCC && a.signs === isSigns))
               continue;
             if(options.dlsubs.includes('all') || options.dlsubs.includes(langItem.locale)){
