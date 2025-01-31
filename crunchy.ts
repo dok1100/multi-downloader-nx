@@ -1354,6 +1354,13 @@ export default class Crunchy implements ServiceClass {
 
           if (chapters.length > 0) {
             chapters.sort((a, b) => a.start - b.start);
+            //Check if chapters has an intro and recap
+            if (!(chapters.find(c => c.type === 'intro') || chapters.find(c => c.type === 'recap'))) {
+              compiledChapters.push(
+                `CHAPTER${(compiledChapters.length/2)+1}=00:00:00.00`,
+                `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
+                );
+              }
             //Loop through all the chapters
             for (const chapter of chapters) {
               if (typeof chapter.start == 'undefined' || typeof chapter.end == 'undefined') continue;
@@ -1363,10 +1370,17 @@ export default class Crunchy implements ServiceClass {
               endTime.setSeconds(chapter.end);
               const startFormatted = startTime.toISOString().substring(11, 19)+'.00';
               const endFormatted = endTime.toISOString().substring(11, 19)+'.00';
-              ////Find the lowest start time
-              const lowestStart = Math.min(...chapters.map(obj => obj.start));
-              ////Find the largest start time
-              const largestStart = Math.max(...chapters.map(obj => obj.start));
+              ////Find the min and max start time
+              const maxStart = Math.max(
+                ...chapters
+                .map(obj => obj.start)
+                .filter((start): start is number => start !== null && start !== undefined)
+                );
+              const minStart = Math.min(
+                ...chapters
+                .map(obj => obj.start)
+                .filter((start): start is number => start !== null && start !== undefined)
+                );
               ////We need the duration of the ep
               const epInfo = await this.req.getData(`${api.cms}/objects/${currentMediaId}?force_locale=&preferred_audio_language=ja-JP&locale=${this.locale}`, AuthHeaders);
                 if(!epInfo.ok || !epInfo.res){
@@ -1378,7 +1392,7 @@ export default class Crunchy implements ServiceClass {
               const durationSeconds = Math.floor(durationMs / 1000 - 3);
               //Push generated chapters
               if ((chapter.type == 'intro') || (chapter.type == 'recap')) {
-                if (lowestStart > 0) {
+                if (minStart > 0) {
                   compiledChapters.push(
                     `CHAPTER${(compiledChapters.length/2)+1}=00:00:00.00`,
                     `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
@@ -1388,7 +1402,7 @@ export default class Crunchy implements ServiceClass {
                   `CHAPTER${(compiledChapters.length/2)+1}=${startFormatted}`,
                   `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)}`
                   );
-                if (chapter.end < durationSeconds && chapter.end != largestStart) {
+                if (chapter.end < durationSeconds && chapter.end != maxStart) {
                   compiledChapters.push(
                     `CHAPTER${(compiledChapters.length/2)+1}=${endFormatted}`,
                     `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
@@ -1399,7 +1413,7 @@ export default class Crunchy implements ServiceClass {
                   `CHAPTER${(compiledChapters.length/2)+1}=${startFormatted}`,
                   `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)}`
                   );
-                if (chapter.end < durationSeconds && chapter.end != largestStart) {
+                if (chapter.end < durationSeconds && chapter.end != maxStart) {
                   compiledChapters.push(
                     `CHAPTER${(compiledChapters.length/2)+1}=${endFormatted}`,
                     `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
