@@ -1402,7 +1402,7 @@ export default class Crunchy implements ServiceClass {
                   `CHAPTER${(compiledChapters.length/2)+1}=${startFormatted}`,
                   `CHAPTER${(compiledChapters.length/2)+1}NAME=${chapter.type.charAt(0).toUpperCase() + chapter.type.slice(1)}`
                 );
-                if (chapter.end < epDuration && chapter.end != maxStart) {
+                if (chapter.end < epDuration && chapter.end != maxStart && chapter.end != chapterData.intro.start) {
                   compiledChapters.push(
                     `CHAPTER${(compiledChapters.length/2)+1}=${endFormatted}`,
                     `CHAPTER${(compiledChapters.length/2)+1}NAME=Episode`
