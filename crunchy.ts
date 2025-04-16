@@ -265,7 +265,7 @@ export default class Crunchy implements ServiceClass {
       headers: {...api.crunchyAuthHeader, Authorization: `Basic ${await this.productionToken()}`},
       body: authData
     };
-    const authReq = await this.req.getData(api.beta_auth, authReqOpts);
+    const authReq = await this.req.getData(api.auth, authReqOpts);
     if(!authReq.ok || !authReq.res){
       console.error('Authentication failed!');
       return { isOk: false, reason: new Error('Authentication failed') };
@@ -293,7 +293,7 @@ export default class Crunchy implements ServiceClass {
       headers: {...api.crunchyAuthHeader, Authorization: `Basic ${await this.productionToken()}`},
       body: authData
     };
-    const authReq = await this.req.getData(api.beta_auth, authReqOpts);
+    const authReq = await this.req.getData(api.auth, authReqOpts);
     if(!authReq.ok || !authReq.res){
       console.error('Anonymous Authentication failed!');
       return;
@@ -350,7 +350,7 @@ export default class Crunchy implements ServiceClass {
       headers: {...api.crunchyAuthHeader, Authorization: `Basic ${await this.productionToken()}`, Cookie: `etp_rt=${refreshToken}`},
       body: authData
     };
-    const authReq = await this.req.getData(api.beta_auth, authReqOpts);
+    const authReq = await this.req.getData(api.auth, authReqOpts);
     if(!authReq.ok || !authReq.res){
       console.error('Token Authentication failed!');
       if (authReq.res?.status == 400) {
@@ -393,7 +393,7 @@ export default class Crunchy implements ServiceClass {
         headers: {...api.crunchyAuthHeader, Authorization: `Basic ${await this.productionToken()}`, Cookie: `etp_rt=${this.token.refresh_token}`},
         body: authData
       };
-      const authReq = await this.req.getData(api.beta_auth, authReqOpts);
+      const authReq = await this.req.getData(api.auth, authReqOpts);
       if(!authReq.ok || !authReq.res){
         console.error('Token Refresh Failed!');
         if (authReq.res?.status == 400) {
@@ -1452,7 +1452,7 @@ export default class Crunchy implements ServiceClass {
       if (options.cstream !== 'none') {
         const playbackReq = await this.req.getData(`https://cr-play-service.prd.crunchyrollsvc.com/v2/${currentVersion ? currentVersion.guid : currentMediaId}/${CrunchyPlayStreams[options.cstream]}/play`, AuthHeaders);
         if (!playbackReq.ok || !playbackReq.res) {
-          console.error('Request Stream URLs FAILED!');
+          console.warn('Request Stream URLs FAILED!');
         } else {
           playStream = await playbackReq.res.json() as CrunchyPlayStream;
           const derivedPlaystreams = {} as CrunchyStreams;
@@ -2390,7 +2390,7 @@ export default class Crunchy implements ServiceClass {
 
     for (const key of Object.keys(sortedEpisodes)) {
       const item = sortedEpisodes[key];
-      console.info(`[${key}] ${
+      console.info(`[${key}] [${item.items[0].upload_date ? new Date(item.items[0].upload_date).toISOString().slice(0, 10) : '0000-00-00'}] ${
         item.items.find(a => !a.season_title.match(/\(\w+ Dub\)/))?.season_title ?? item.items[0].season_title.replace(/\(\w+ Dub\)/g, '').trimEnd()
       } - Season ${item.items[0].season_number} - ${item.items[0].title} [${
         item.items.map((a, index) => {
